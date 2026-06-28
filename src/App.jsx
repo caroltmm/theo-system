@@ -33,6 +33,8 @@ const THEO = {
   ],
 };
 
+const ACCESS_PASSWORD = "3010";
+
 const ICON_OPTIONS = ["⭐","🎯","🏆","🎮","🍕","🚀","🦁","🐉","🌟","💪","🍦","🎁","🧩","📖","🚲","🎨","🎸","🍫","🏅","🛹","⚽","👕","🎽","🧤"];
 
 const S = {
@@ -114,13 +116,13 @@ function TheoAvatar({size=52,glow=false}) {
   );
 }
 
-function KidView({tasks,doneToday,totalPoints,pointsToday,maxPerDay,nextPrize,confetti,toast,toastColor,onComplete,setMode}) {
+function KidView({tasks,doneToday,totalPoints,pointsToday,maxPerDay,nextPrize,confetti,toast,toastColor,onComplete,onUndo,setMode}) {
   const [pending,setPending]=useState(null);
   const phrase=useRef(THEO.phrases[Math.floor(Math.random()*THEO.phrases.length)]).current;
   const allDone=tasks.length>0&&tasks.every(t=>doneToday.includes(t.id));
   const donePct=tasks.length?Math.round((doneToday.length/tasks.length)*100):0;
   const handleCard=(task)=>{
-    if(doneToday.includes(task.id))return;
+    if(doneToday.includes(task.id)){onUndo(task);setPending(null);return;}
     if(pending===task.id){onComplete(task);setPending(null);}
     else setPending(task.id);
   };
@@ -191,12 +193,12 @@ function KidView({tasks,doneToday,totalPoints,pointsToday,maxPerDay,nextPrize,co
             const done=doneToday.includes(task.id);
             const isPending=pending===task.id;
             return (
-              <div key={task.id} className="task-card" onClick={()=>handleCard(task)} style={{background:done?"linear-gradient(135deg,#FF6B35cc,#FF6B3588)":isPending?"rgba(255,215,0,0.16)":"rgba(255,255,255,0.07)",border:`2px solid ${done?"#FF6B35":isPending?"#FFD700":"rgba(255,255,255,0.1)"}`,borderRadius:18,padding:"16px 12px",cursor:done?"default":"pointer",textAlign:"center",animation:isPending?"pendingPulse 1s ease infinite":done?"popIn 0.5s ease":"none",boxShadow:done?"0 4px 20px rgba(255,107,53,0.3)":isPending?"0 4px 20px rgba(255,215,0,0.25)":"none",position:"relative",overflow:"hidden"}}>
+              <div key={task.id} className="task-card" onClick={()=>handleCard(task)} style={{background:done?"linear-gradient(135deg,#FF6B35cc,#FF6B3588)":isPending?"rgba(255,215,0,0.16)":"rgba(255,255,255,0.07)",border:`2px solid ${done?"#FF6B35":isPending?"#FFD700":"rgba(255,255,255,0.1)"}`,borderRadius:18,padding:"16px 12px",cursor:"pointer",textAlign:"center",animation:isPending?"pendingPulse 1s ease infinite":done?"popIn 0.5s ease":"none",boxShadow:done?"0 4px 20px rgba(255,107,53,0.3)":isPending?"0 4px 20px rgba(255,215,0,0.25)":"none",position:"relative",overflow:"hidden"}}>
                 {done&&<div style={{position:"absolute",top:4,right:6,fontSize:9,fontWeight:800,color:"#fff",opacity:0.5}}>✓</div>}
                 <div style={{fontSize:30,marginBottom:6}}>{done?"✅":isPending?"👆":task.icon}</div>
                 <div style={{fontSize:13,fontWeight:800,color:done?"#fff":isPending?"#FFD700":"rgba(255,255,255,0.9)",marginBottom:6,lineHeight:1.3}}>{task.label}</div>
                 <div style={{fontSize:11,fontWeight:800,color:done?"#fff":isPending?"#1a1a2e":"#FFD700",background:done?"rgba(255,255,255,0.2)":isPending?"#FFD700":"rgba(255,215,0,0.1)",borderRadius:999,padding:"3px 10px",display:"inline-block"}}>
-                  {done?"Feito! 🎯":isPending?"Confirmar?":`+${task.points} pts`}
+                  {done?"Feito! ✓ (desfazer)":isPending?"Confirmar?":`+${task.points} pts`}
                 </div>
               </div>
             );
@@ -322,9 +324,41 @@ function KidDashboard({prizes,totalPoints,monthPoints,threshold80,progress80,rea
   );
 }
 
+const DAY_LABELS=["D","S","T","Q","Q","S","S"];
+const DAY_NAMES=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+function DaySelector({days,onChange}){
+  const toggle=(d)=>{
+    const has=days.includes(d);
+    let nd=has?days.filter(x=>x!==d):[...days,d];
+    nd.sort((a,b)=>a-b);
+    onChange(nd);
+  };
+  return(
+    <div>
+      <div style={{fontSize:10,color:"rgba(255,255,255,0.4)",fontWeight:700,marginBottom:6,letterSpacing:1,textTransform:"uppercase"}}>Aparece em quais dias?</div>
+      <div style={{display:"flex",gap:4}}>
+        {DAY_LABELS.map((lbl,i)=>{
+          const on=days.includes(i);
+          return(
+            <button key={i} type="button" onClick={()=>toggle(i)} title={DAY_NAMES[i]} style={{flex:1,padding:"8px 0",borderRadius:8,border:`1px solid ${on?"#4ECDC4":"rgba(255,255,255,0.12)"}`,background:on?"rgba(78,205,196,0.2)":"rgba(255,255,255,0.04)",color:on?"#4ECDC4":"rgba(255,255,255,0.3)",fontSize:13,fontWeight:800,cursor:"pointer"}}>{lbl}</button>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",gap:6,marginTop:6}}>
+        <button type="button" onClick={()=>onChange([0,1,2,3,4,5,6])} style={{flex:1,padding:"5px 0",borderRadius:7,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.45)",fontSize:10,fontWeight:700,cursor:"pointer"}}>Todos os dias</button>
+        <button type="button" onClick={()=>onChange([1,2,3,4,5])} style={{flex:1,padding:"5px 0",borderRadius:7,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.45)",fontSize:10,fontWeight:700,cursor:"pointer"}}>Seg a Sex</button>
+        <button type="button" onClick={()=>onChange([0,6])} style={{flex:1,padding:"5px 0",borderRadius:7,border:"1px solid rgba(255,255,255,0.1)",background:"transparent",color:"rgba(255,255,255,0.45)",fontSize:10,fontWeight:700,cursor:"pointer"}}>Fim de semana</button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [mode,setMode]=useState("kid");
   const [loading,setLoading]=useState(true);
+  const [unlocked,setUnlocked]=useState(()=>{try{return sessionStorage.getItem("theo_unlocked")==="1";}catch{return false;}});
+  const [accessInput,setAccessInput]=useState("");
+  const [accessError,setAccessError]=useState(false);
   const [tasks,setTasks]=useState([]);
   const [prizes,setPrizes]=useState([]);
   const [totalPoints,setTotalPoints]=useState(0);
@@ -346,13 +380,13 @@ export default function App() {
   const [showAddTask,setShowAddTask]=useState(false);
   const [showAddPrize,setShowAddPrize]=useState(false);
   const [showSchool,setShowSchool]=useState(false);
-  const [newTask,setNewTask]=useState({label:"",points:10,icon:"⭐"});
+  const [newTask,setNewTask]=useState({label:"",points:10,icon:"⭐",days:[0,1,2,3,4,5,6]});
   const [newPrize,setNewPrize]=useState({label:"",cost:100,icon:"🎁"});
   const [gradeInputs,setGradeInputs]=useState(["","",""]);
   const [editingPrize,setEditingPrize]=useState(null);
   const [editPrizeData,setEditPrizeData]=useState({label:"",cost:0,icon:""});
   const [editingTask,setEditingTask]=useState(null);
-  const [editTaskData,setEditTaskData]=useState({label:"",points:0,icon:""});
+  const [editTaskData,setEditTaskData]=useState({label:"",points:0,icon:"",days:[0,1,2,3,4,5,6]});
   const [monthPrizeInput,setMonthPrizeInput]=useState("");
   const [editingMonthPrize,setEditingMonthPrize]=useState(false);
 
@@ -437,9 +471,10 @@ export default function App() {
 
   const addTask=async()=>{
     if(!newTask.label.trim())return;
-    const{data}=await sb.from("tasks").insert({...newTask,points:Number(newTask.points),active:true}).select().single();
+    if(!newTask.days||newTask.days.length===0){showToast("Escolha pelo menos 1 dia!","#ef4444");return;}
+    const{data}=await sb.from("tasks").insert({label:newTask.label,points:Number(newTask.points),icon:newTask.icon,days:newTask.days,active:true}).select().single();
     if(data)setTasks([...tasks,data]);
-    setNewTask({label:"",points:10,icon:"⭐"});setShowAddTask(false);
+    setNewTask({label:"",points:10,icon:"⭐",days:[0,1,2,3,4,5,6]});setShowAddTask(false);
   };
 
   const deleteTask=async(id)=>{
@@ -469,7 +504,8 @@ export default function App() {
 
   const saveEditTask=async(id)=>{
     if(!editTaskData.label.trim())return;
-    const upd={label:editTaskData.label,points:Number(editTaskData.points),icon:editTaskData.icon};
+    if(!editTaskData.days||editTaskData.days.length===0){showToast("Escolha pelo menos 1 dia!","#ef4444");return;}
+    const upd={label:editTaskData.label,points:Number(editTaskData.points),icon:editTaskData.icon,days:editTaskData.days};
     setTasks(tasks.map(t=>t.id===id?{...t,...upd}:t));
     setEditingTask(null);
     await sb.from("tasks").update(upd).eq("id",id);
@@ -523,10 +559,13 @@ export default function App() {
 
   const currentMonth=monthKey();
   const totalDays=daysInMonth(currentMonth);
-  const maxPerDay=tasks.reduce((s,t)=>s+t.points,0);
+  const todayDow=new Date().getDay();
+  const taskDays=(t)=>Array.isArray(t.days)?t.days:[0,1,2,3,4,5,6];
+  const tasksToday=tasks.filter(t=>taskDays(t).includes(todayDow));
+  const maxPerDay=tasksToday.reduce((s,t)=>s+t.points,0);
   const maxMonthPoints=totalDays*maxPerDay;
   const threshold80=Math.ceil(maxMonthPoints*0.8);
-  const pointsToday=tasks.filter(t=>doneToday.includes(t.id)).reduce((s,t)=>s+t.points,0);
+  const pointsToday=tasksToday.filter(t=>doneToday.includes(t.id)).reduce((s,t)=>s+t.points,0);
   const monthPoints=Object.entries(dailyLog).filter(([date])=>date.startsWith(currentMonth)).reduce((s,[,v])=>s+(v.points||0),0);
   const reached80=monthPoints>=threshold80;
   const progress80=maxMonthPoints>0?Math.min((monthPoints/threshold80)*100,100):0;
@@ -558,7 +597,29 @@ export default function App() {
 
   if(loading)return <Loader/>;
 
-  if(mode==="kid")return <KidView tasks={tasks} doneToday={doneToday} totalPoints={totalPoints} pointsToday={pointsToday} maxPerDay={maxPerDay} nextPrize={nextPrize} confetti={confetti} toast={toast} toastColor={toastColor} onComplete={completeTask} setMode={setMode}/>;
+  const tryUnlock=()=>{
+    if(accessInput===ACCESS_PASSWORD){
+      setUnlocked(true);setAccessError(false);
+      try{sessionStorage.setItem("theo_unlocked","1");}catch{}
+    }else{setAccessError(true);setAccessInput("");}
+  };
+
+  if(!unlocked)return(
+    <div style={{minHeight:"100vh",background:THEO.bgKid,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito',system-ui,sans-serif",color:"#fff",position:"relative",overflow:"hidden"}}>
+      <style>{CSS}</style>
+      <Starfield/>
+      <div style={{position:"relative",zIndex:10,background:"rgba(255,255,255,0.06)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:24,padding:"40px 36px",width:300,textAlign:"center",boxShadow:"0 20px 60px rgba(0,0,0,0.5)"}}>
+        <div style={{fontSize:52,marginBottom:10,animation:"floatBall 3s ease-in-out infinite"}}>⚽</div>
+        <div style={{fontSize:22,fontWeight:900,marginBottom:4,background:"linear-gradient(90deg,#fff,#FFD700)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Sistema do Theo</div>
+        <div style={{fontSize:13,color:"rgba(255,255,255,0.4)",fontWeight:700,marginBottom:24}}>Digite a senha para entrar</div>
+        <input type="password" inputMode="numeric" value={accessInput} onChange={e=>setAccessInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&tryUnlock()} placeholder="••••" style={{...S.input,textAlign:"center",letterSpacing:12,fontSize:26,padding:"12px",marginBottom:8}}/>
+        {accessError&&<div style={{color:"#ef4444",fontSize:12,marginBottom:8,fontWeight:700}}>Senha incorreta!</div>}
+        <button className="btn-b" onClick={tryUnlock} style={{...S.btnPrimary,marginTop:10}}>Entrar ⚽</button>
+      </div>
+    </div>
+  );
+
+  if(mode==="kid")return <KidView tasks={tasksToday} doneToday={doneToday} totalPoints={totalPoints} pointsToday={pointsToday} maxPerDay={maxPerDay} nextPrize={nextPrize} confetti={confetti} toast={toast} toastColor={toastColor} onComplete={completeTask} onUndo={undoTask} setMode={setMode}/>;
   if(mode==="kid-dashboard")return <KidDashboard prizes={prizes} totalPoints={totalPoints} monthPoints={monthPoints} threshold80={threshold80} progress80={progress80} reached80={reached80} currentMonthPrize={currentMonthPrize} nextPrize={nextPrize} confetti={confetti} toast={toast} toastColor={toastColor} setMode={setMode}/>;
 
   if(mode==="pin-entry")return(
@@ -817,7 +878,7 @@ export default function App() {
             <div style={S.sectionLabel}>Missões diárias</div>
             <button className="btn-b" onClick={()=>setShowAddTask(!showAddTask)} style={{background:showAddTask?"transparent":"#4ECDC4",border:showAddTask?"1px solid rgba(255,255,255,0.08)":"none",color:showAddTask?"rgba(255,255,255,0.25)":"#1a1a2e",padding:"4px 11px",borderRadius:20,fontSize:11,fontWeight:800,cursor:"pointer"}}>{showAddTask?"Cancelar":"+ Adicionar"}</button>
           </div>
-          {showAddTask&&<div style={{background:"rgba(255,255,255,0.04)",borderRadius:11,padding:13,marginBottom:13}}><div style={{display:"flex",flexDirection:"column",gap:8}}><input value={newTask.label} onChange={e=>setNewTask({...newTask,label:e.target.value})} placeholder="Nome da missão" style={S.input}/><div style={{display:"flex",gap:8}}><input type="number" value={newTask.points} onChange={e=>setNewTask({...newTask,points:e.target.value})} placeholder="Pontos" style={{...S.input,flex:1}}/><select value={newTask.icon} onChange={e=>setNewTask({...newTask,icon:e.target.value})} style={{...S.input,flex:0.55}}>{ICON_OPTIONS.map(ic=><option key={ic} value={ic}>{ic}</option>)}</select></div><button className="btn-b" onClick={addTask} style={S.btnPrimary}>Adicionar missão</button></div></div>}
+          {showAddTask&&<div style={{background:"rgba(255,255,255,0.04)",borderRadius:11,padding:13,marginBottom:13}}><div style={{display:"flex",flexDirection:"column",gap:8}}><input value={newTask.label} onChange={e=>setNewTask({...newTask,label:e.target.value})} placeholder="Nome da missão" style={S.input}/><div style={{display:"flex",gap:8}}><input type="number" value={newTask.points} onChange={e=>setNewTask({...newTask,points:e.target.value})} placeholder="Pontos" style={{...S.input,flex:1}}/><select value={newTask.icon} onChange={e=>setNewTask({...newTask,icon:e.target.value})} style={{...S.input,flex:0.55}}>{ICON_OPTIONS.map(ic=><option key={ic} value={ic}>{ic}</option>)}</select></div><DaySelector days={newTask.days} onChange={d=>setNewTask({...newTask,days:d})}/><button className="btn-b" onClick={addTask} style={S.btnPrimary}>Adicionar missão</button></div></div>}
           <div style={{display:"flex",flexDirection:"column",gap:7}}>
             {tasks.map(task=>{
               const done=doneToday.includes(task.id);
@@ -829,6 +890,7 @@ export default function App() {
                       <input type="number" value={editTaskData.points} onChange={e=>setEditTaskData({...editTaskData,points:e.target.value})} placeholder="Pontos" style={{...S.input,flex:1}}/>
                       <select value={editTaskData.icon} onChange={e=>setEditTaskData({...editTaskData,icon:e.target.value})} style={{...S.input,flex:0.55}}>{ICON_OPTIONS.map(ic=><option key={ic} value={ic}>{ic}</option>)}</select>
                     </div>
+                    <DaySelector days={editTaskData.days} onChange={d=>setEditTaskData({...editTaskData,days:d})}/>
                     <div style={{display:"flex",gap:6}}>
                       <button className="btn-b" onClick={()=>saveEditTask(task.id)} style={{...S.btnPrimary,flex:1,padding:9,background:"linear-gradient(90deg,#4ECDC4,#45B7D1)",color:"#1a1a2e"}}>Salvar</button>
                       <button onClick={()=>setEditingTask(null)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.4)",padding:"9px 14px",borderRadius:10,fontSize:12,cursor:"pointer",fontWeight:700}}>Cancelar</button>
@@ -838,10 +900,10 @@ export default function App() {
               );
               return(
                 <div key={task.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 11px",background:done?"rgba(255,107,53,0.09)":"rgba(255,255,255,0.04)",borderRadius:11,border:`1px solid ${done?"rgba(255,107,53,0.22)":"rgba(255,255,255,0.07)"}`}}>
-                  <div style={{display:"flex",alignItems:"center",gap:9}}><span style={{fontSize:17}}>{done?"✅":task.icon}</span><div><div style={{fontSize:13,fontWeight:700}}>{task.label}</div><div style={{fontSize:11,color:"#FFD700",fontWeight:700}}>+{task.points} pts</div></div></div>
+                  <div style={{display:"flex",alignItems:"center",gap:9}}><span style={{fontSize:17}}>{done?"✅":task.icon}</span><div><div style={{fontSize:13,fontWeight:700}}>{task.label}</div><div style={{fontSize:11,color:"#FFD700",fontWeight:700}}>+{task.points} pts <span style={{color:"rgba(255,255,255,0.3)",fontWeight:600}}>· {(()=>{const d=Array.isArray(task.days)?task.days:[0,1,2,3,4,5,6];if(d.length===7)return "todo dia";if(d.length===5&&[1,2,3,4,5].every(x=>d.includes(x)))return "seg-sex";if(d.length===2&&d.includes(0)&&d.includes(6))return "fim de sem.";return d.map(x=>["dom","seg","ter","qua","qui","sex","sáb"][x]).join(", ");})()}</span></div></div></div>
                   <div style={{display:"flex",gap:5}}>
                     {done&&<button onClick={()=>undoTask(task)} style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.22)",color:"#ef4444",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Desfazer</button>}
-                    <button onClick={()=>{setEditingTask(task.id);setEditTaskData({label:task.label,points:task.points,icon:task.icon});}} style={{background:"rgba(78,205,196,0.12)",border:"1px solid rgba(78,205,196,0.25)",color:"#4ECDC4",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Editar</button>
+                    <button onClick={()=>{setEditingTask(task.id);setEditTaskData({label:task.label,points:task.points,icon:task.icon,days:Array.isArray(task.days)?task.days:[0,1,2,3,4,5,6]});}} style={{background:"rgba(78,205,196,0.12)",border:"1px solid rgba(78,205,196,0.25)",color:"#4ECDC4",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Editar</button>
                     <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"rgba(255,255,255,0.2)",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Remover</button>
                   </div>
                 </div>
