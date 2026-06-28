@@ -137,6 +137,7 @@ function KidView({tasks,doneToday,totalPoints,pointsToday,maxPerDay,nextPrize,co
             <div>
               <div style={{fontSize:11,letterSpacing:2,color:"rgba(255,255,255,0.4)",textTransform:"uppercase"}}>Olá,</div>
               <div style={{fontSize:24,fontWeight:900,lineHeight:1,background:"linear-gradient(90deg,#fff,#FFD700)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",backgroundClip:"text"}}>Theo! 👋</div>
+              <div style={{fontSize:11,color:"rgba(255,255,255,0.45)",fontWeight:700,marginTop:4,textTransform:"capitalize"}}>{new Date().toLocaleDateString("pt-BR",{weekday:"long",day:"2-digit",month:"long"})}</div>
               <div style={{display:"flex",gap:2,marginTop:3}}>{[...Array(5)].map((_,i)=><span key={i} style={{fontSize:10,color:"#FFD700",animation:`twinkle ${1.5+i*0.3}s ease-in-out ${i*0.2}s infinite`}}>★</span>)}</div>
             </div>
           </div>
@@ -348,6 +349,10 @@ export default function App() {
   const [newTask,setNewTask]=useState({label:"",points:10,icon:"⭐"});
   const [newPrize,setNewPrize]=useState({label:"",cost:100,icon:"🎁"});
   const [gradeInputs,setGradeInputs]=useState(["","",""]);
+  const [editingPrize,setEditingPrize]=useState(null);
+  const [editPrizeData,setEditPrizeData]=useState({label:"",cost:0,icon:""});
+  const [editingTask,setEditingTask]=useState(null);
+  const [editTaskData,setEditTaskData]=useState({label:"",points:0,icon:""});
   const [monthPrizeInput,setMonthPrizeInput]=useState("");
   const [editingMonthPrize,setEditingMonthPrize]=useState(false);
 
@@ -452,6 +457,22 @@ export default function App() {
   const deletePrize=async(id)=>{
     await sb.from("prizes").delete().eq("id",id);
     setPrizes(prizes.filter(p=>p.id!==id));
+  };
+
+  const saveEditPrize=async(id)=>{
+    if(!editPrizeData.label.trim())return;
+    const upd={label:editPrizeData.label,cost:Number(editPrizeData.cost),icon:editPrizeData.icon};
+    setPrizes(prizes.map(p=>p.id===id?{...p,...upd}:p));
+    setEditingPrize(null);
+    await sb.from("prizes").update(upd).eq("id",id);
+  };
+
+  const saveEditTask=async(id)=>{
+    if(!editTaskData.label.trim())return;
+    const upd={label:editTaskData.label,points:Number(editTaskData.points),icon:editTaskData.icon};
+    setTasks(tasks.map(t=>t.id===id?{...t,...upd}:t));
+    setEditingTask(null);
+    await sb.from("tasks").update(upd).eq("id",id);
   };
 
   const savePin=async()=>{
@@ -764,13 +785,30 @@ export default function App() {
           {showAddPrize&&<div style={{background:"rgba(255,255,255,0.04)",borderRadius:11,padding:13,marginBottom:13}}><div style={{display:"flex",flexDirection:"column",gap:8}}><input value={newPrize.label} onChange={e=>setNewPrize({...newPrize,label:e.target.value})} placeholder="Nome do prêmio" style={S.input}/><div style={{display:"flex",gap:8}}><input type="number" value={newPrize.cost} onChange={e=>setNewPrize({...newPrize,cost:e.target.value})} placeholder="Pontos" style={{...S.input,flex:1}}/><select value={newPrize.icon} onChange={e=>setNewPrize({...newPrize,icon:e.target.value})} style={{...S.input,flex:0.55}}>{ICON_OPTIONS.map(ic=><option key={ic} value={ic}>{ic}</option>)}</select></div><button className="btn-b" onClick={addPrize} style={S.btnPrimary}>Adicionar prêmio</button></div></div>}
           <div style={{display:"flex",flexDirection:"column",gap:7}}>
             {prizes.map(prize=>(
+              editingPrize===prize.id?(
+                <div key={prize.id} style={{background:"rgba(167,139,250,0.08)",border:"1px solid rgba(167,139,250,0.3)",borderRadius:11,padding:11}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <input value={editPrizeData.label} onChange={e=>setEditPrizeData({...editPrizeData,label:e.target.value})} placeholder="Nome do prêmio" style={S.input}/>
+                    <div style={{display:"flex",gap:8}}>
+                      <input type="number" value={editPrizeData.cost} onChange={e=>setEditPrizeData({...editPrizeData,cost:e.target.value})} placeholder="Pontos" style={{...S.input,flex:1}}/>
+                      <select value={editPrizeData.icon} onChange={e=>setEditPrizeData({...editPrizeData,icon:e.target.value})} style={{...S.input,flex:0.55}}>{ICON_OPTIONS.map(ic=><option key={ic} value={ic}>{ic}</option>)}</select>
+                    </div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button className="btn-b" onClick={()=>saveEditPrize(prize.id)} style={{...S.btnPrimary,flex:1,padding:9}}>Salvar</button>
+                      <button onClick={()=>setEditingPrize(null)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.4)",padding:"9px 14px",borderRadius:10,fontSize:12,cursor:"pointer",fontWeight:700}}>Cancelar</button>
+                    </div>
+                  </div>
+                </div>
+              ):(
               <div key={prize.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 11px",background:prize.redeemed?"rgba(78,205,196,0.07)":"rgba(255,255,255,0.04)",borderRadius:11,border:`1px solid ${prize.redeemed?"rgba(78,205,196,0.18)":"rgba(255,255,255,0.07)"}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:9}}><span style={{fontSize:17}}>{prize.icon}</span><div><div style={{fontSize:13,fontWeight:700,color:prize.redeemed?"rgba(255,255,255,0.25)":"#fff"}}>{prize.label}</div><div style={{fontSize:11,color:"#a78bfa",fontWeight:700}}>{prize.cost} pts</div></div></div>
                 <div style={{display:"flex",gap:5}}>
                   {prize.redeemed&&<button onClick={()=>restorePrize(prize)} style={{background:"rgba(255,165,0,0.1)",border:"1px solid rgba(255,165,0,0.22)",color:"#FFA500",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Devolver</button>}
+                  <button onClick={()=>{setEditingPrize(prize.id);setEditPrizeData({label:prize.label,cost:prize.cost,icon:prize.icon});}} style={{background:"rgba(167,139,250,0.12)",border:"1px solid rgba(167,139,250,0.25)",color:"#a78bfa",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Editar</button>
                   <button onClick={()=>deletePrize(prize.id)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"rgba(255,255,255,0.2)",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Remover</button>
                 </div>
               </div>
+              )
             ))}
           </div>
         </div>
@@ -783,11 +821,27 @@ export default function App() {
           <div style={{display:"flex",flexDirection:"column",gap:7}}>
             {tasks.map(task=>{
               const done=doneToday.includes(task.id);
+              if(editingTask===task.id) return (
+                <div key={task.id} style={{background:"rgba(78,205,196,0.08)",border:"1px solid rgba(78,205,196,0.3)",borderRadius:11,padding:11}}>
+                  <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                    <input value={editTaskData.label} onChange={e=>setEditTaskData({...editTaskData,label:e.target.value})} placeholder="Nome da missão" style={S.input}/>
+                    <div style={{display:"flex",gap:8}}>
+                      <input type="number" value={editTaskData.points} onChange={e=>setEditTaskData({...editTaskData,points:e.target.value})} placeholder="Pontos" style={{...S.input,flex:1}}/>
+                      <select value={editTaskData.icon} onChange={e=>setEditTaskData({...editTaskData,icon:e.target.value})} style={{...S.input,flex:0.55}}>{ICON_OPTIONS.map(ic=><option key={ic} value={ic}>{ic}</option>)}</select>
+                    </div>
+                    <div style={{display:"flex",gap:6}}>
+                      <button className="btn-b" onClick={()=>saveEditTask(task.id)} style={{...S.btnPrimary,flex:1,padding:9,background:"linear-gradient(90deg,#4ECDC4,#45B7D1)",color:"#1a1a2e"}}>Salvar</button>
+                      <button onClick={()=>setEditingTask(null)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.4)",padding:"9px 14px",borderRadius:10,fontSize:12,cursor:"pointer",fontWeight:700}}>Cancelar</button>
+                    </div>
+                  </div>
+                </div>
+              );
               return(
                 <div key={task.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 11px",background:done?"rgba(255,107,53,0.09)":"rgba(255,255,255,0.04)",borderRadius:11,border:`1px solid ${done?"rgba(255,107,53,0.22)":"rgba(255,255,255,0.07)"}`}}>
                   <div style={{display:"flex",alignItems:"center",gap:9}}><span style={{fontSize:17}}>{done?"✅":task.icon}</span><div><div style={{fontSize:13,fontWeight:700}}>{task.label}</div><div style={{fontSize:11,color:"#FFD700",fontWeight:700}}>+{task.points} pts</div></div></div>
                   <div style={{display:"flex",gap:5}}>
                     {done&&<button onClick={()=>undoTask(task)} style={{background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.22)",color:"#ef4444",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Desfazer</button>}
+                    <button onClick={()=>{setEditingTask(task.id);setEditTaskData({label:task.label,points:task.points,icon:task.icon});}} style={{background:"rgba(78,205,196,0.12)",border:"1px solid rgba(78,205,196,0.25)",color:"#4ECDC4",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Editar</button>
                     <button onClick={()=>deleteTask(task.id)} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"rgba(255,255,255,0.2)",padding:"3px 8px",borderRadius:8,fontSize:10,cursor:"pointer",fontWeight:700}}>Remover</button>
                   </div>
                 </div>
